@@ -1,34 +1,30 @@
 #include "Co2.h"
 
+// 생성자 초기화 리스트 순서 수정
 Co2::Co2(int rxPin, int txPin, int baudRate)
-  : _rxPin(rxPin), _txPin(txPin), _cm1106(_rxPin, txPin), _baudRate(baudRate) {
-    _cmdGetCo2[0] = 0x11;
-    _cmdGetCo2[1] = 0x01;
-    _cmdGetCo2[2] = 0x01;
-    _cmdGetCo2[3] = 0xED;
-}
+    : _rxPin(rxPin), _txPin(txPin), _cm1106(_rxPin, _txPin), _baudRate(baudRate), _co2(-1) {}
 
 void Co2::begin() {
-  _cm1106.begin(_baudRate);
+    _cm1106.begin(_baudRate);
 }
 
-void Co2::readSensor() {
-  _cm1106.write(_cmdGetCo2, sizeof(_cmdGetCo2));
-  delay(50);
+int Co2::readSensor() {
+    _cm1106.write(_cmdGetCo2, sizeof(_cmdGetCo2));
+    delay(50); // 여기서는 간단히 delay 사용
 
-  if (_cm1106.available() >= 4) {
-    byte response[4];
-    _cm1106.readBytes(response, 4);
-    if (response[0] == 0x16) {
-      _co2 = (response[1] << 8) | response[2];
-    } else {
-      _co2 = -1; // 잘못된 응답 시 오류 값 할당
+    if (_cm1106.available() >= 4) {
+        byte response[4];
+        _cm1106.readBytes(response, 4);
+
+        if (response[0] == 0x16) {
+            _co2 = (response[1] << 8) | response[2];
+            return _co2;
+        }
     }
-  } else {
-    _co2 = -1; // 응답이 없을 시 오류 값 할당
-  }
+    _co2 = -1; // 실패 시 -1 반환
+    return -1;
 }
 
-int Co2::getCo2() {
-  return _co2;
+int Co2::getCo2() const {
+    return _co2;
 }
