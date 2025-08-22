@@ -2,30 +2,30 @@
 
 // 클래스 스코프 지정자 추가
 RealTimeClock::RealTimeClock(int clk, int dat, int rst)
-    : _clk(clk), _dat(dat), _rst(rst), _myWire(_dat, _clk, _rst), _rtc(_myWire) {
+  : _clk(clk), _dat(dat), _rst(rst), _myWire(_dat, _clk, _rst), _rtc(_myWire) {
 }
 
 // 초기화
 void RealTimeClock::begin() {
-    _rtc.Begin();
+  _rtc.Begin();
 
-    // RTC가 유효하지 않으면 컴파일 시간을 기준으로 시간을 설정
-    if (!_rtc.IsDateTimeValid()) {
-        _rtc.SetDateTime(RtcDateTime(__DATE__, __TIME__));
-    }
+  // RTC가 유효하지 않으면 컴파일 시간을 기준으로 시간을 설정
+  if (!_rtc.IsDateTimeValid()) {
+    _rtc.SetDateTime(RtcDateTime(__DATE__, __TIME__));
+  }
 }
 
 // 게터 함수에 const 추가
-int RealTimeClock::getHour() const {
-    return _rtc.GetDateTime().Hour();
+int RealTimeClock::getHour() {
+  return _rtc.GetDateTime().Hour();
 }
 // 분을 가져오는 함수
-int RealTimeClock::getMinute() const {
-    return _rtc.GetDateTime().Minute();
+int RealTimeClock::getMinute() {
+  return _rtc.GetDateTime().Minute();
 }
 // 초를 가져오는 함수
-int RealTimeClock::getSecond() const {
-    return _rtc.GetDateTime().Second();
+int RealTimeClock::getSecond() {
+  return _rtc.GetDateTime().Second();
 }
 
 /*
