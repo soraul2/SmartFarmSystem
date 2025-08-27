@@ -31,6 +31,6 @@ float PhMeter::getAveragePh() const {
 }
 
 float PhMeter::_calculatePh(float voltage) const {
-    float ph = 7.0 - ((voltage - 2.5) * 3.0);
+    float ph = 7.0 - ((voltage - 2.5) * 4.38);
     return ph + _offset;
 }
