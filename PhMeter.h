@@ -16,7 +16,7 @@ public :
 private :
     // ADC 전압은 상수로 선언
     const float ADC_VOLTAGE = 5.0;
-
+        
     int _analogPin;
     float _offset;
     int _samplingCount;

@@ -1,32 +1,44 @@
-#include "Arduino.h"
 #include "TempHumiCo2.h"
+#include <Wire.h>
 
-TempHumiCo2 tempHumiCo2;
+// TempHumiCo2 클래스 객체 생성
+TempHumiCo2 mySensor;
 
-void setup(){
-  Serial.begin(9600);
-
-  while(!tempHumiCo2.begin()){
-    //온습도이산화탄소 센서에서 값을 받아올때까지 반복
-    Serial.println("센서 장착 X");
-    delay(3000);
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {
+    // Wait for serial connection to be established.
+    delay(100);
   }
-  //온도 , 습도 , 이산화탄소 초기값 입력
-  tempHumiCo2.readSensor();
+  
+  Serial.println("SCD41 Periodic Measurement Test");
+  
+  // Initialize I2C communication.
+  Wire.begin();
 
+  // Initialize the sensor.
+  mySensor.begin();
+  
+  Serial.println("Sensor initialization complete. Starting measurements...");
 }
 
-void loop(){
-  delay(3000);
-  
-  float temperature = tempHumiCo2.getTemperature();
-  float humidity = tempHumiCo2.getHumidity();
-  uint16_t co2 = tempHumiCo2.getCo2();
-  
-  Serial.println(temperature);
-  
-  Serial.println(humidity);
-  
-  Serial.println(co2);
-}
+void loop() {
+  // Read sensor data.
+  // This function updates the class's member variables when data is ready (every 5 seconds).
+  mySensor.readSensor();
 
+  // Get the updated values and print to the Serial Monitor.
+  Serial.print("CO2: ");
+  Serial.print(mySensor.getCo2());
+  Serial.print(" ppm | ");
+  Serial.print("Temp: ");
+  Serial.print(mySensor.getTemperature());
+  Serial.print(" C | ");
+  Serial.print("Humidity: ");
+  Serial.print(mySensor.getHumidity());
+  Serial.println(" %RH");
+  
+  // Wait for 1 second before the next loop.
+  // The sensor updates every 5 seconds, so this allows us to check for new data periodically.
+  delay(1000); 
+}
