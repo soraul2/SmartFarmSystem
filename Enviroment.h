@@ -1,5 +1,6 @@
 #ifndef Enviroment_h
 #define Enviroment_h
+#include <ArduinoJson.h>
 
 #include <Arduino.h>
 
@@ -48,7 +49,7 @@ public:
   float getCo2() const;
   float getLux() const;
   void printAllData() const;
-
+  void toJson(JsonDocument& doc);
 };
 
 #endif

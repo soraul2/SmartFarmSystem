@@ -11,6 +11,32 @@
 //waterTemp (부품 X)
 #include "WaterTemperature.h"
 
+//JSON 형식으로 변환하기 위한 라이브러리
+#include <ArduinoJson.h>
+
+//MQTT 및 WIFI 를 연결하기 위한 라이브러리
+#include <WiFi.h>
+#include <PubSubClient.h>
+//MQTT 및 WIFI 를 연결하기 위한 DATA 설정
+// Wi-Fi 설정
+const char* ssid = "daesin_302";
+const char* password = "ds123456";
+
+// MQTT 브로커 설정
+const char* mqtt_server = "YOUR_MQTT_BROKER_IP_OR_DOMAIN"; // 예: "broker.hivemq.com"
+const char* mqtt_topic = "smartfarm/data"; // 데이터를 보낼 토픽
+
+// MQTT 클라이언트 ID
+const char* mqtt_client_id = "ESP32_SmartFarm_Client";
+
+// Wi-Fi와 MQTT 클라이언트 객체 생성
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// 함수 선언
+void setup_wifi();
+void reconnect();
+
 //객체 생성 - loop() 밖에서 한 번만 생성
 TempHumiCo2 tempHumiCo2;
 Lux lux;
@@ -23,8 +49,14 @@ Enviroment env;
 WaterTemperature waterTemperature;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   
+  //wifi 설정
+  setup_wifi();
+  
+  // MQTT 서버 설정
+  client.setServer(mqtt_server, 1883); // 기본 MQTT 포트 1883
+
   // 센서들 초기화
   Wire.begin();
   tempHumiCo2.begin();
@@ -43,6 +75,11 @@ void setup() {
 }
 
 void loop() {
+   // MQTT 연결 상태 확인 및 재연결
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop(); // MQTT 클라이언트 루프, 메시지 수신 등을 처리
   // 센서에서 현재 데이터를 읽어옴
   tempHumiCo2.readSensor();
   
@@ -60,6 +97,56 @@ void loop() {
 
   env.printAllData();
 
-  delay(2000);
+  //json 형식으로 변환 시작
+  StaticJsonDocument<256> doc;
+  env.toJson(doc);
 
+  char jsonBuffer[256];
+  serializeJson(doc , jsonBuffer);
+
+  //MQTT 브로커에 데이터 발행
+  client.publish(env.getMqttTopic().c_str(),jsonBuffer);
+  Serial.print("Published message: ");
+  Serial.println(jsonBuffer);
+
+  delay(2000);
+}
+
+
+
+// Wi-Fi 연결 함수
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+// MQTT 연결 및 재연결 함수
+void reconnect() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    
+    // MQTT 브로커에 연결 시도
+    if (client.connect(mqtt_client_id)) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+    }
+  }
 }

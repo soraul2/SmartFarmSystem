@@ -115,3 +115,19 @@ void Enviroment::printAllData() const {
   Serial.println(_lux);
   Serial.println("-----------------------");
 }
+
+
+void Enviroment::toJson(JsonDocument& doc){
+  doc["num"] = _num;
+  doc["serial"] = _serial;
+  doc["temperature"] = _temperature;
+  doc["humidity"] = _humidity;
+  doc["waterTemperature"] = _waterTemperature;
+  doc["co2"] = _co2;
+  doc["lux"] = _lux;
+  doc["ph"] = _ph;
+  doc["ec"] = _ec;
+}
+
+
+
