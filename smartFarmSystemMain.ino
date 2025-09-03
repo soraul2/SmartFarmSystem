@@ -6,60 +6,60 @@
 //Lux
 #include "Lux.h"
 //ph
-#include "PhMeter.h"
-//date
-#include "RealTimeClock.h"
+#include "Ph.h"
 //ec (부품 X)
 //waterTemp (부품 X)
+#include "WaterTemperature.h"
 
-//객체 생성
-//온도 , 습도 , Co2 관련 세팅 반드시 A4 , A5에 꽂아야 한다.
+//객체 생성 - loop() 밖에서 한 번만 생성
 TempHumiCo2 tempHumiCo2;
-
-//Lux 관련 세팅
-//pin은 반드시 (SDA)A4 , (SCL)A5 에 꽂아야 한다
 Lux lux;
+Ph ph;
 
-//ph 관련 세팅
-PhMeter phMeter(A0,9.1,10);
-RealTimeClock rtc(5,6,7);
+// Enviroment 클래스의 객체를 전역 변수로 선언
+// setter를 사용하면 생성자에 모든 값을 넣을 필요가 없습니다.
+Enviroment env; 
 
-//환경을 받을 Enviroment
-Enviroment* env;
+WaterTemperature waterTemperature;
 
 void setup() {
   Serial.begin(9600);
-  //온도 , 습도 , Co2 관련 세팅
+  
+  // 센서들 초기화
   Wire.begin();
   tempHumiCo2.begin();
-  Serial.println("--- Temp , Humi , Co2 Sensor begin() ---");
+  Serial.println("--- Temp, Humi, Co2 Sensor begin() ---");
 
-  //Lux 초기화 작업을 해줘야한다.
   while(!lux.begin()){
     Serial.println("--- Lux Sensor 연결 X");
+    delay(500);
   }
-  //phMeter 초기화 작업을 해준다.
-  phMeter.begin();
+  Serial.println("--- Lux Sensor begin() ---");
 
-  //rtc
-  rtc.begin();
+  // Enviroment 객체에 고정적인 값(시리얼 번호 등)을 한 번만 설정
+  env.setNum(1);
+  env.setSerial("GRW-001-A");
+  env.setMqttTopic("smartfarmsystem/enviroment");
 }
 
 void loop() {
-  //온도 , 습도 , Co2 센서를 읽어서 값을 가져오는 단계
+  // 센서에서 현재 데이터를 읽어옴
   tempHumiCo2.readSensor();
   
-  env = new Enviroment(1, "GRW-001-A", tempHumiCo2.getTemperature(), tempHumiCo2.getHumidity(), phMeter.getAveragePh(), 1.0, 25.0, (float)tempHumiCo2.getCo2(), lux.getLux(), "smartfarmsystem/enviroment");
-  //  Enviroment(int num, const char* serial, float temperature, float humidity, float ph, float ec, float waterTemperature, float co2, float lux, const char* mqttTopic);
-  Serial.println(env->getCo2());
-  Serial.println(env->getTemperature());
-  Serial.println(env->getHumidity());
-  Serial.println(env->getLux());
-  Serial.println(env->getPh());
-  Serial.println(rtc.getSecond());
-  delay(3000);
+  // setter를 사용하여 env 객체의 값을 업데이트
+  env.setTemperature(tempHumiCo2.getTemperature());
+  env.setHumidity(tempHumiCo2.getHumidity());
+  env.setPh(ph.getPh());
+  
+  // EC 및 수온은 임시 값으로 설정 (부품이 있다면 해당 센서 함수로 변경)
+  env.setEc(1.0);
+  env.setWaterTemperature(waterTemperature.getWaterTemperature());
+  
+  env.setCo2((float)tempHumiCo2.getCo2());
+  env.setLux(lux.getLux());
+
+  env.printAllData();
+
+  delay(2000);
+
 }
-
-
-
-

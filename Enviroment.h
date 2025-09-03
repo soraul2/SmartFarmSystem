@@ -2,13 +2,13 @@
 #define Enviroment_h
 
 #include <Arduino.h>
-#include <PubSubClient.h>
 
 class Enviroment {
 private:
   int _num;
-  char _serial[50];
-  char _mqttTopic[50]; // 포인터 대신 배열로 변경하여 메모리 안전성 확보
+  String _serial; // Arduino String 클래스를 사용하여 더 유연하게 변경
+  String _mqttTopic;
+  
   float _temperature;
   float _humidity;
   float _ph;
@@ -18,17 +18,28 @@ private:
   float _lux;
 
 public:
-  // 생성자: 매개변수 순서와 타입을 명확하게 정의
-  // .cpp 파일의 정의와 일치해야 함
-  Enviroment(int num, const char* serial, float temperature, float humidity, float ph, float ec, float waterTemperature, float co2, float lux, const char* mqttTopic);
-
-  // 데이터 전송 함수: const char*로 수정
-  void sendData(const char* topic);
-
-  // Getter 함수들
+  // 기본 생성자: 객체를 먼저 생성하고 데이터를 나중에 설정할 때 사용
+  Enviroment();
+  
+  // 모든 데이터를 한 번에 설정하는 생성자
+  Enviroment(int num, const String& serial, float temp, float hum, float ph, float ec, float waterTemp, float co2, float lux, const String& mqttTopic);
+  
+  // 데이터 설정 (setter) 함수들
+  void setNum(int num);
+  void setSerial(const String& serial);
+  void setMqttTopic(const String& topic);
+  void setTemperature(float temp);
+  void setHumidity(float hum);
+  void setPh(float ph);
+  void setEc(float ec);
+  void setWaterTemperature(float waterTemp);
+  void setCo2(float co2);
+  void setLux(float lux);
+  
+  // 데이터 가져오기 (getter) 함수들
   int getNum() const;
-  const char* getSerial() const;
-  const char* getMqttTopic() const; // _mqttTopic을 반환하는 함수 추가
+  String getSerial() const;
+  String getMqttTopic() const;
   float getTemperature() const;
   float getHumidity() const;
   float getPh() const;
@@ -36,6 +47,8 @@ public:
   float getWaterTemperature() const;
   float getCo2() const;
   float getLux() const;
+  void printAllData() const;
+
 };
 
 #endif

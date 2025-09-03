@@ -1,49 +1,63 @@
 #include "Enviroment.h"
-#include <string.h>
-#include <ArduinoJson.h>
 
-extern PubSubClient client;
+// 기본 생성자 정의
+Enviroment::Enviroment() {}
 
-// 생성자 정의
-Enviroment::Enviroment(int num, const char* serial, float temperature, float humidity, float ph, float ec, float waterTemperature, float co2, float lux, const char* mqttTopic)
-  : _num(num), _temperature(temperature), _humidity(humidity), _ph(ph), _ec(ec), _waterTemperature(waterTemperature), _co2(co2), _lux(lux) {
+// 모든 데이터를 한 번에 설정하는 생성자
+Enviroment::Enviroment(int num, const String& serial, float temp, float hum, float ph, float ec, float waterTemp, float co2, float lux, const String& mqttTopic)
+  : _num(num), _serial(serial), _mqttTopic(mqttTopic), _temperature(temp), _humidity(hum), _ph(ph), _ec(ec), _waterTemperature(waterTemp), _co2(co2), _lux(lux) {}
 
-  strncpy(_serial, serial, sizeof(_serial) - 1);
-  _serial[sizeof(_serial) - 1] = '\0';
-
-  strncpy(_mqttTopic, mqttTopic, sizeof(_mqttTopic) - 1);
-  _mqttTopic[sizeof(_mqttTopic) - 1] = '\0';
+// 데이터 설정 (setter) 함수들
+void Enviroment::setNum(int num) {
+  _num = num;
 }
 
-void Enviroment::sendData(const char* topic) {
-  DynamicJsonDocument doc(512);
-
-  doc["num"] = _num;
-  doc["serial"] = _serial;
-  doc["temperature"] = _temperature;
-  doc["humidity"] = _humidity;
-  doc["ph"] = _ph;
-  doc["ec"] = _ec;
-  doc["waterTemperature"] = _waterTemperature;
-  doc["co2"] = _co2;
-  doc["lux"] = _lux;
-
-  char jsonBuffer[512];
-  serializeJson(doc, jsonBuffer);
-
-  client.publish(topic, jsonBuffer);
+void Enviroment::setSerial(const String& serial) {
+  _serial = serial;
 }
 
-// **이 부분이 빠져있을 가능성이 높습니다. 아래 코드를 추가하세요.**
+void Enviroment::setMqttTopic(const String& topic) {
+  _mqttTopic = topic;
+}
+
+void Enviroment::setTemperature(float temp) {
+  _temperature = temp;
+}
+
+void Enviroment::setHumidity(float hum) {
+  _humidity = hum;
+}
+
+void Enviroment::setPh(float ph) {
+  _ph = ph;
+}
+
+void Enviroment::setEc(float ec) {
+  _ec = ec;
+}
+
+void Enviroment::setWaterTemperature(float waterTemp) {
+  _waterTemperature = waterTemp;
+}
+
+void Enviroment::setCo2(float co2) {
+  _co2 = co2;
+}
+
+void Enviroment::setLux(float lux) {
+  _lux = lux;
+}
+
+// 데이터 가져오기 (getter) 함수들
 int Enviroment::getNum() const {
   return _num;
 }
 
-const char* Enviroment::getSerial() const {
+String Enviroment::getSerial() const {
   return _serial;
 }
 
-const char* Enviroment::getMqttTopic() const {
+String Enviroment::getMqttTopic() const {
   return _mqttTopic;
 }
 
@@ -73,4 +87,31 @@ float Enviroment::getCo2() const {
 
 float Enviroment::getLux() const {
   return _lux;
+}
+
+// **추가된 부분**
+// 모든 데이터를 시리얼 모니터로 출력
+void Enviroment::printAllData() const {
+  Serial.println("--- Enviroment Data ---");
+  Serial.print("Num: ");
+  Serial.println(_num);
+  Serial.print("Serial: ");
+  Serial.println(_serial);
+  Serial.print("MQTT Topic: ");
+  Serial.println(_mqttTopic);
+  Serial.print("Temperature: ");
+  Serial.println(_temperature);
+  Serial.print("Humidity: ");
+  Serial.println(_humidity);
+  Serial.print("pH: ");
+  Serial.println(_ph);
+  Serial.print("EC: ");
+  Serial.println(_ec);
+  Serial.print("Water Temperature: ");
+  Serial.println(_waterTemperature);
+  Serial.print("CO2: ");
+  Serial.println(_co2);
+  Serial.print("Lux: ");
+  Serial.println(_lux);
+  Serial.println("-----------------------");
 }
