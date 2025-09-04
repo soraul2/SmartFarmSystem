@@ -4,12 +4,17 @@
 Enviroment::Enviroment() {}
 
 // 모든 데이터를 한 번에 설정하는 생성자
-Enviroment::Enviroment(int num, const String& serial, float temp, float hum, float ph, float ec, float waterTemp, float co2, float lux, const String& mqttTopic)
+Enviroment::Enviroment(int num, const String& serial, const String& date, float temp, float hum, float ph, float ec, float waterTemp, float co2, float lux, const String& mqttTopic)
   : _num(num), _serial(serial), _mqttTopic(mqttTopic), _temperature(temp), _humidity(hum), _ph(ph), _ec(ec), _waterTemperature(waterTemp), _co2(co2), _lux(lux) {}
 
 // 데이터 설정 (setter) 함수들
 void Enviroment::setNum(int num) {
   _num = num;
+}
+
+// 데이터 설정 (setter) 함수들
+void Enviroment::setDate(const String& date) {
+  _date = date;
 }
 
 void Enviroment::setSerial(const String& serial) {
@@ -56,6 +61,11 @@ int Enviroment::getNum() const {
 String Enviroment::getSerial() const {
   return _serial;
 }
+
+String Enviroment::getDate() const {
+  return _date;
+}
+
 
 String Enviroment::getMqttTopic() const {
   return _mqttTopic;
@@ -113,6 +123,8 @@ void Enviroment::printAllData() const {
   Serial.println(_co2);
   Serial.print("Lux: ");
   Serial.println(_lux);
+  Serial.print("date: ");
+  Serial.println(_date);
   Serial.println("-----------------------");
 }
 
@@ -120,6 +132,7 @@ void Enviroment::printAllData() const {
 void Enviroment::toJson(JsonDocument& doc){
   doc["num"] = _num;
   doc["serial"] = _serial;
+  doc["date"] = _date;
   doc["temperature"] = _temperature;
   doc["humidity"] = _humidity;
   doc["waterTemperature"] = _waterTemperature;
