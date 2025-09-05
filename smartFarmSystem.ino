@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 //MQTT 및 WIFI 를 연결하기 위한 라이브러리
 #include <PubSubClient.h>
+#include <WiFiSSLClient.h>
 #include <WiFiS3.h>
 //real time를 받아오는 라이브러리
 #include <NTPClient.h>
@@ -19,9 +20,12 @@
 //MQTT 및 WIFI 를 연결하기 위한 DATA 설정
 const char* ssid = "daesin_302";
 const char* password = "ds123456";
-const char* mqtt_server = "broker.hivemq.com";  // 예: "broker.hivemq.com"
+const char* mqtt_server = "eafc441602df4e36aed5f15ad6df2e4c.s1.eu.hivemq.cloud";  // 예: "broker.hivemq.com"
 const char* mqtt_topic = "smartfarm/data";      // 데이터를 보낼 토픽
 const char* mqtt_client_id = "c9010a5344a54163aed93da0e1ae31d0";
+const int mqtt_port = 8883;
+const char* mqtt_user = "daesin_302";
+const char* mqtt_password = "!Ds123456";
 
 //제어 부분을 구독하는 데이터
 const char* tempControlTopic = "smartfarmsystem/mycontrol/temperature";
@@ -31,8 +35,8 @@ const char* ledControlTopic = "smartfarmsystem/mycontrol/led";
 const char* pumpControlTopic = "smartfarmsystem/mycontrol/pump";
 
 // Wi-Fi와 MQTT 클라이언트 객체 생성
-WiFiClient espClient;
-PubSubClient client(espClient);
+WiFiSSLClient sslClient; // R4 보드용 SSL/TLS 클라이언트
+PubSubClient client(sslClient);
 TempHumiCo2 tempHumiCo2;
 Lux lux;
 Ph ph;
@@ -56,7 +60,7 @@ void setup() {
   setup_wifi();
 
   // MQTT 서버 설정
-  client.setServer(mqtt_server, 1883);  // 기본 MQTT 포트 1883
+  client.setServer(mqtt_server, mqtt_port);  // 기본 MQTT 포트 1883
   client.setCallback(callback);         // 콜백 함수 설정
 
   // 센서들 초기화
@@ -129,7 +133,6 @@ void loop() {
 
 // Wi-Fi 연결 함수
 void setup_wifi() {
-  delay(10);
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
@@ -153,7 +156,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
 
     // MQTT 브로커에 연결 시도
-    if (client.connect(mqtt_client_id)) {
+    if (client.connect(mqtt_client_id,mqtt_user,mqtt_password)) {
       Serial.println("connected");
       // 성공적으로 연결되면 토픽 구독
       client.subscribe(tempControlTopic);
