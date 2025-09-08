@@ -4,7 +4,11 @@
 #include <PubSubClient.h>
 #include <WiFiSSLClient.h>
 #include <WiFiS3.h>
+
+//NTP를 활용한 real time을 불러오는 라이브러리
+
 #include <WiFiUdp.h>
+#include <NTPClient.h>
 
 #include "Enviroment.h"
 #include "TempHumiCo2.h"
@@ -18,7 +22,7 @@
 const char* ssid = "daesin_302";
 const char* password = "ds123456";
 const char* mqtt_server = "eafc441602df4e36aed5f15ad6df2e4c.s1.eu.hivemq.cloud";  // 예: "broker.hivemq.com"
-const char* mqtt_topic = "smartfarm/data";      // 데이터를 보낼 토픽
+const char* mqtt_topic = "smartfarm/data";                                        // 데이터를 보낼 토픽
 const char* mqtt_client_id = "c9010a5344a54163aed93da0e1ae31d0";
 const int mqtt_port = 8883;
 const char* mqtt_user = "daesin_302";
@@ -31,8 +35,21 @@ const char* phecControlTopic = "smartfarmsystem/mycontrol/phec";
 const char* ledControlTopic = "smartfarmsystem/mycontrol/led";
 const char* pumpControlTopic = "smartfarmsystem/mycontrol/pump";
 
+const int tempPin = 12;
+const int fanPin = 11;
+const int phecPin = 10;
+const int ledPin = 9;
+const int pumpPin = 8;
+
+//auto control은 어떤 방식으로 제어를 할 것인가?
+
+//NTP 객체 생성
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+
+
 // Wi-Fi와 MQTT 클라이언트 객체 생성
-WiFiSSLClient sslClient; // R4 보드용 SSL/TLS 클라이언트
+WiFiSSLClient sslClient;  // R4 보드용 SSL/TLS 클라이언트
 PubSubClient client(sslClient);
 TempHumiCo2 tempHumiCo2;
 Lux lux;
@@ -42,6 +59,9 @@ WaterTemperature waterTemperature;
 Ph ph(A0);
 
 
+unsigned long lastNtpUpdate = 0;
+const long ntpUpdateInterval = 3600000;  // 1시간 (60 * 60 * 1000)
+
 void setup_wifi();
 void reconnect();
 void callback();
@@ -49,17 +69,22 @@ void callback();
 void setup() {
   Serial.begin(115200);
 
+  //NTP time 설정
+  timeClient.begin();
+  timeClient.update();
+  lastNtpUpdate = millis();
+
   //wifi 설정
   setup_wifi();
 
   // MQTT 서버 설정
   client.setServer(mqtt_server, mqtt_port);  // 기본 MQTT 포트 1883
-  client.setCallback(callback);         // 콜백 함수 설정
+  client.setCallback(callback);              // 콜백 함수 설정
 
   // 센서들 초기화
   Wire.begin();
   tempHumiCo2.begin();
-  ph.begin(); 
+  ph.begin();
 
   Serial.println("--- Temp, Humi, Co2 Sensor begin() ---");
 
@@ -80,7 +105,16 @@ const long publishInterval = 2000;
 unsigned long lastPublish = 0;
 
 
+
+
 void loop() {
+
+  // 1시간마다 NTP 동기화 (선택적)
+  if (millis() - lastNtpUpdate > ntpUpdateInterval) {
+    timeClient.update();
+    lastNtpUpdate = millis();
+  }
+
   // MQTT 연결 상태 확인 및 재연결
   if (!client.connected()) {
     reconnect();
@@ -89,6 +123,16 @@ void loop() {
   // 이 부분이 가장 중요합니다!
   // loop() 함수가 반복될 때마다 빠르게 호출되어 메시지 수신을 처리합니다.
   client.loop();
+
+
+
+  // LED 제어 로직
+  //  예: 특정 시간이 되면 LED 켜기
+  // unsigned long currentTimeInSeconds = timeClient.getEpochTime();
+  // if (currentTimeInSeconds % 60 == 0) { // 매 분 정각에 실행
+  //   // LED 켜기 또는 끄기
+  // }
+
 
   // 시간이 되었을 때만 센서 데이터를 읽고 발행합니다.
   unsigned long now = millis();
@@ -144,7 +188,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
 
     // MQTT 브로커에 연결 시도
-    if (client.connect(mqtt_client_id,mqtt_user,mqtt_password)) {
+    if (client.connect(mqtt_client_id, mqtt_user, mqtt_password)) {
       Serial.println("connected");
       // 성공적으로 연결되면 토픽 구독
       client.subscribe(tempControlTopic);
@@ -177,85 +221,83 @@ void callback(char* topic, byte* payload, unsigned int length) {
   message[length] = '\0';  // 문자열의 끝을 표시
 
 
+
   if (strcmp(topic, "smartfarmsystem/mycontrol/temperature") == 0) {
     Serial.println("temperature 컨트롤 데이터 수신");
     if (strcmp(message, "true") == 0) {
       // LED 켜기
-      pinMode(12, OUTPUT);
-      digitalWrite(12, HIGH);
+      pinMode(ledPin, OUTPUT);
+      digitalWrite(ledPin, HIGH);
       Serial.println("Temperature ON");
       client.publish("smartfarmsystem/mycontrol/temperature/status", "true");
       // digitalWrite(LED_BUILTIN, HIGH);
-    }else {
-      pinMode(12, OUTPUT);
-      digitalWrite(12, LOW);
+    } else {
+      pinMode(ledPin, OUTPUT);
+      digitalWrite(ledPin, LOW);
       Serial.println("LED OFF");
       client.publish("smartfarmsystem/mycontrol/temperature/status", "false");
     }
-  }else if (strcmp(topic, "smartfarmsystem/mycontrol/fan") == 0) {
+  } else if (strcmp(topic, "smartfarmsystem/mycontrol/fan") == 0) {
     Serial.println("fan 컨트롤 데이터 수신");
     if (strcmp(message, "true") == 0) {
       // LED 켜기
-      pinMode(11, OUTPUT);
-      digitalWrite(11, HIGH);
+      pinMode(fanPin, OUTPUT);
+      digitalWrite(fanPin, HIGH);
       Serial.println("fan ON");
       client.publish("smartfarmsystem/mycontrol/fan/status", "true");
       // digitalWrite(LED_BUILTIN, HIGH);
     } else {
-      pinMode(11, OUTPUT);
-      digitalWrite(11, LOW);
+      pinMode(fanPin, OUTPUT);
+      digitalWrite(fanPin, LOW);
       Serial.println("fan OFF");
       client.publish("smartfarmsystem/mycontrol/fan/status", "false");
     }
   } else if (strcmp(topic, "smartfarmsystem/mycontrol/phec") == 0) {
     Serial.println("phec 컨트롤 데이터 수신");
     if (strcmp(message, "true") == 0) {
-    // LED 켜기
-      pinMode(10,OUTPUT);
-      digitalWrite(10,HIGH);
+      // LED 켜기
+      pinMode(phecPin, OUTPUT);
+      digitalWrite(phecPin, HIGH);
       Serial.println("phec ON");
       client.publish("smartfarmsystem/mycontrol/phec/status", "true");
 
-    // digitalWrite(LED_BUILTIN, HIGH);
-    }else{
-      pinMode(10,OUTPUT);
-      digitalWrite(10,LOW);
+      // digitalWrite(LED_BUILTIN, HIGH);
+    } else {
+      pinMode(phecPin, OUTPUT);
+      digitalWrite(phecPin, LOW);
       Serial.println("phec OFF");
       client.publish("smartfarmsystem/mycontrol/phec/status", "false");
     }
   } else if (strcmp(topic, "smartfarmsystem/mycontrol/led") == 0) {
     Serial.println("led 컨트롤 데이터 수신");
     if (strcmp(message, "true") == 0) {
-    // LED 켜기
-      pinMode(9,OUTPUT);
-      digitalWrite(9,HIGH);
+      // LED 켜기
+      pinMode(ledPin, OUTPUT);
+      digitalWrite(ledPin, HIGH);
       Serial.println("LED ON");
       client.publish("smartfarmsystem/mycontrol/led/status", "true");
 
-    // digitalWrite(LED_BUILTIN, HIGH);
-    }else{
-      pinMode(9,OUTPUT);
-      digitalWrite(9,LOW);
+      // digitalWrite(LED_BUILTIN, HIGH);
+    } else {
+      pinMode(ledPin, OUTPUT);
+      digitalWrite(ledPin, LOW);
       Serial.println("LED OFF");
       client.publish("smartfarmsystem/mycontrol/led/status", "false");
-
     }
   } else if (strcmp(topic, "smartfarmsystem/mycontrol/pump") == 0) {
     Serial.println("pump 컨트롤 데이터 수신");
     if (strcmp(message, "true") == 0) {
-      pinMode(8,OUTPUT);
-      digitalWrite(8,HIGH);
+      pinMode(pumpPin, OUTPUT);
+      digitalWrite(pumpPin, HIGH);
       Serial.println("pump ON");
       client.publish("smartfarmsystem/mycontrol/pump/status", "true");
-    }else{
-      pinMode(8,OUTPUT);
-      digitalWrite(8,LOW);
+    } else {
+      pinMode(pumpPin, OUTPUT);
+      digitalWrite(pumpPin, LOW);
       Serial.println("pump OFF");
       client.publish("smartfarmsystem/mycontrol/pump/status", "false");
-
     }
   } else {
     Serial.println("알수 없는 데이터 수신");
   }
-
 }
