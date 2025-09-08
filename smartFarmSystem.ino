@@ -4,10 +4,7 @@
 #include <PubSubClient.h>
 #include <WiFiSSLClient.h>
 #include <WiFiS3.h>
-//real time를 받아오는 라이브러리
-#include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <NTPClient.h>
 
 #include "Enviroment.h"
 #include "TempHumiCo2.h"
@@ -44,11 +41,6 @@ Enviroment env;
 WaterTemperature waterTemperature;
 Ph ph(A0);
 
-// NTP 설정
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");  // pool.ntp.org는 전 세계 NTP 서버를 제공
-const long timeOffset = 32400;                 // 한국 시간(KST)은 UTC+9, 9시간을 초 단위로 환산 (9 * 60 * 60)
-
 
 void setup_wifi();
 void reconnect();
@@ -69,10 +61,6 @@ void setup() {
   tempHumiCo2.begin();
   ph.begin(); 
 
-  // NTP 클라이언트 초기화
-  timeClient.begin();
-  timeClient.setTimeOffset(timeOffset);  // 시간 오프셋 설정
-
   Serial.println("--- Temp, Humi, Co2 Sensor begin() ---");
 
   while (!lux.begin()) {
@@ -87,9 +75,10 @@ void setup() {
   env.setMqttTopic("smartfarmsystem/enviroment");
 }
 
-// 센서 데이터 발행 간격 설정 (5초)
+// 센서 데이터 발행 간격 설정 (2초)
 const long publishInterval = 2000;
 unsigned long lastPublish = 0;
+
 
 void loop() {
   // MQTT 연결 상태 확인 및 재연결
@@ -116,9 +105,6 @@ void loop() {
     env.setCo2((float)tempHumiCo2.getCo2());
     env.setLux(lux.getLux());
 
-    // NTP 시간 업데이트
-    timeClient.update();
-    env.setDate(timeClient.getFormattedTime());
 
     // JSON 형식으로 변환 및 MQTT 발행
     StaticJsonDocument<256> doc;
@@ -272,13 +258,4 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("알수 없는 데이터 수신");
   }
 
-  // 여기에 수신된 데이터로 제어할 로직을 추가하세요.
-  // 예를 들어, LED를 켜거나 서보 모터를 제어하는 등
-  if (strcmp(message, "on") == 0) {
-    // LED 켜기
-    // digitalWrite(LED_BUILTIN, HIGH);
-  } else if (strcmp(message, "off") == 0) {
-    // LED 끄기
-    // digitalWrite(LED_BUILTIN, LOW);
-  }
 }
