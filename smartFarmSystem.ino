@@ -39,9 +39,10 @@ WiFiSSLClient sslClient; // R4 보드용 SSL/TLS 클라이언트
 PubSubClient client(sslClient);
 TempHumiCo2 tempHumiCo2;
 Lux lux;
-Ph ph;
+//Ph ph;
 Enviroment env;
 WaterTemperature waterTemperature;
+Ph ph(A0);
 
 // NTP 설정
 WiFiUDP ntpUDP;
@@ -66,6 +67,7 @@ void setup() {
   // 센서들 초기화
   Wire.begin();
   tempHumiCo2.begin();
+  ph.begin(); 
 
   // NTP 클라이언트 초기화
   timeClient.begin();

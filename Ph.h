@@ -1,6 +1,8 @@
 #ifndef Ph_h
 #define Ph_h
 
+#include <Arduino.h>
+
 // pH 센서의 아날로그 핀
 #define PH_PIN A0
 // 아두이노 보드의 실제 전압을 측정하여 넣어주세요.
@@ -11,6 +13,9 @@
 class Ph {
 
 private:
+  // pH 센서 핀 번호
+  int _phPin;
+
   // 1단계 보정에서 얻은 값 (pH 6.86 기준)
   float ph_buffer_7 = 6.86;
   float voltage_buffer_7 = 2.70;
@@ -28,8 +33,13 @@ private:
   float slope2, intercept2; 
 
 public:
-  // 생성자
-  Ph(){
+  // 생성자: 핀 번호를 매개변수로 받도록 변경
+  Ph(int phPin = PH_PIN) {
+    _phPin = phPin;
+  }
+
+  // 초기화 함수
+  void begin() {
     slopeInterceptCal();
   }
 
@@ -46,7 +56,7 @@ public:
   float getPh() {
     long sumOfSensorValues = 0;
     for (int i = 0; i < NUM_SAMPLES; i++) {
-      sumOfSensorValues += analogRead(PH_PIN);
+      sumOfSensorValues += analogRead(_phPin);
       delay(10);
     }
     float averageSensorValue = (float)sumOfSensorValues / NUM_SAMPLES;

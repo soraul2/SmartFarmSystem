@@ -27,7 +27,7 @@ public:
     _waterTemperature = sensors.getTempCByIndex(0);
 
     if (_waterTemperature == DEVICE_DISCONNECTED_C) {
-      Serial.println("센서가 연결되지 않았습니다.");
+      Serial.println("Water Temperature 센서가 연결되지 않았습니다.");
     }
     return _waterTemperature;
   }
