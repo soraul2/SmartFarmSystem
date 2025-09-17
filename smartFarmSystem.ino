@@ -16,17 +16,18 @@
 #include "Lux.h"
 #include "Ph.h"
 #include "WaterTemperature.h"
-//ec (부품 X)
+#include "Ec.h"
 
 //MQTT 및 WIFI 를 연결하기 위한 DATA 설정
 const char* ssid = "daesin_302";
 const char* password = "ds123456";
 const char* mqtt_server = "eafc441602df4e36aed5f15ad6df2e4c.s1.eu.hivemq.cloud";  // 예: "broker.hivemq.com"
 const char* mqtt_topic = "smartfarm/data";                                        // 데이터를 보낼 토픽
-const char* mqtt_client_id = "c9010a5344a54163aed93da0e1ae31d0";
+const char* mqtt_client_id = "c9010a5344a54163aed93da0egfdgsbxcv";
 const int mqtt_port = 8883;
 const char* mqtt_user = "daesin_302";
 const char* mqtt_password = "!Ds123456";
+
 
 //제어 부분을 구독하는 데이터
 const char* tempControlTopic = "smartfarmsystem/mycontrol/temperature";
@@ -43,10 +44,6 @@ const int pumpPin = 8;
 
 //auto control은 어떤 방식으로 제어를 할 것인가?
 
-//NTP 객체 생성
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
-
 
 // Wi-Fi와 MQTT 클라이언트 객체 생성
 WiFiSSLClient sslClient;  // R4 보드용 SSL/TLS 클라이언트
@@ -57,7 +54,10 @@ Lux lux;
 Enviroment env;
 WaterTemperature waterTemperature;
 Ph ph(A0);
+Ec ecSensor(A1);
 
+// 현재 물의 온도 (온도 센서가 없으면 수동 입력)
+float currentTemperature = 25.0;
 
 unsigned long lastNtpUpdate = 0;
 const long ntpUpdateInterval = 3600000;  // 1시간 (60 * 60 * 1000)
@@ -68,11 +68,6 @@ void callback();
 
 void setup() {
   Serial.begin(115200);
-
-  //NTP time 설정
-  timeClient.begin();
-  timeClient.update();
-  lastNtpUpdate = millis();
 
   //wifi 설정
   setup_wifi();
@@ -85,6 +80,13 @@ void setup() {
   Wire.begin();
   tempHumiCo2.begin();
   ph.begin();
+  tempHumiCo2.readSensor();
+  ecSensor.begin();
+
+
+  // (선택 사항) 센서 교정
+  // 실제 교정 용액을 사용해 얻은 아날로그 값과 온도를 입력합니다.
+  // ecSensor.calibrate(1334.0, 25.0);
 
   Serial.println("--- Temp, Humi, Co2 Sensor begin() ---");
 
@@ -100,55 +102,41 @@ void setup() {
   env.setMqttTopic("smartfarmsystem/enviroment");
 }
 
-// 센서 데이터 발행 간격 설정 (2초)
-const long publishInterval = 2000;
+// 센서 데이터 발행 간격 설정 (1분20초)
+const long publishInterval = 62000;
 unsigned long lastPublish = 0;
 
-
-
+// 센서 데이터 읽는 시간 간격 설정 (1분)
+const long readInterval = 60000;
+unsigned long lastRead = 0;
 
 void loop() {
 
-  // 1시간마다 NTP 동기화 (선택적)
-  if (millis() - lastNtpUpdate > ntpUpdateInterval) {
-    timeClient.update();
-    lastNtpUpdate = millis();
-  }
 
-  // MQTT 연결 상태 확인 및 재연결
   if (!client.connected()) {
     reconnect();
   }
-
-  // 이 부분이 가장 중요합니다!
-  // loop() 함수가 반복될 때마다 빠르게 호출되어 메시지 수신을 처리합니다.
   client.loop();
 
-
-
-  // LED 제어 로직
-  //  예: 특정 시간이 되면 LED 켜기
-  // unsigned long currentTimeInSeconds = timeClient.getEpochTime();
-  // if (currentTimeInSeconds % 60 == 0) { // 매 분 정각에 실행
-  //   // LED 켜기 또는 끄기
-  // }
-
-
-  // 시간이 되었을 때만 센서 데이터를 읽고 발행합니다.
   unsigned long now = millis();
+
+  if (now - lastRead >= readInterval) {
+    lastRead = now;
+    tempHumiCo2.readSensor();
+  }
+
   if (now - lastPublish >= publishInterval) {
     lastPublish = now;
 
-    // 센서에서 현재 데이터를 읽어옴
-    tempHumiCo2.readSensor();
+    currentTemperature = waterTemperature.getWaterTemperature();
     env.setTemperature(tempHumiCo2.getTemperature());
     env.setHumidity(tempHumiCo2.getHumidity());
     env.setPh(ph.getPh());
-    env.setEc(1.1);
+    env.setEc(ecSensor.readEcValue(currentTemperature));
+    env.setLux(lux.getLux());
     env.setWaterTemperature(waterTemperature.getWaterTemperature());
     env.setCo2((float)tempHumiCo2.getCo2());
     env.setLux(lux.getLux());
-
 
     // JSON 형식으로 변환 및 MQTT 발행
     StaticJsonDocument<256> doc;
@@ -226,15 +214,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("temperature 컨트롤 데이터 수신");
     if (strcmp(message, "true") == 0) {
       // LED 켜기
-      pinMode(ledPin, OUTPUT);
-      digitalWrite(ledPin, HIGH);
+      pinMode(tempPin, OUTPUT);
+      digitalWrite(tempPin, HIGH);
       Serial.println("Temperature ON");
       client.publish("smartfarmsystem/mycontrol/temperature/status", "true");
       // digitalWrite(LED_BUILTIN, HIGH);
     } else {
-      pinMode(ledPin, OUTPUT);
-      digitalWrite(ledPin, LOW);
-      Serial.println("LED OFF");
+      pinMode(tempPin, OUTPUT);
+      digitalWrite(tempPin, LOW);
+      Serial.println("Temperature OFF");
       client.publish("smartfarmsystem/mycontrol/temperature/status", "false");
     }
   } else if (strcmp(topic, "smartfarmsystem/mycontrol/fan") == 0) {
