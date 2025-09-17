@@ -18,6 +18,8 @@
 #include "WaterTemperature.h"
 #include "Ec.h"
 
+
+
 //MQTT 및 WIFI 를 연결하기 위한 DATA 설정
 const char* ssid = "daesin_302";
 const char* password = "ds123456";
@@ -55,12 +57,13 @@ Enviroment env;
 WaterTemperature waterTemperature;
 Ph ph(A0);
 Ec ecSensor(A1);
+// NTP 클라이언트 설정을 위한 UDP 객체 생성
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 32400, 60000);
+
 
 // 현재 물의 온도 (온도 센서가 없으면 수동 입력)
 float currentTemperature = 25.0;
-
-unsigned long lastNtpUpdate = 0;
-const long ntpUpdateInterval = 3600000;  // 1시간 (60 * 60 * 1000)
 
 void setup_wifi();
 void reconnect();
@@ -72,10 +75,16 @@ void setup() {
   //wifi 설정
   setup_wifi();
 
+  // NTP 클라이언트 초기화
+  timeClient.begin();
+  timeClient.update();
+  Serial.println("--- NTP Client initialized ---");
+
   // MQTT 서버 설정
   client.setServer(mqtt_server, mqtt_port);  // 기본 MQTT 포트 1883
   client.setCallback(callback);              // 콜백 함수 설정
 
+  
   // 센서들 초기화
   Wire.begin();
   tempHumiCo2.begin();
@@ -110,6 +119,10 @@ unsigned long lastPublish = 0;
 const long readInterval = 60000;
 unsigned long lastRead = 0;
 
+// NTP 업데이트 시간 간격 설정 
+const long ntpUpdateInterval = 32000;
+unsigned long lastNtpUpdate = 0;
+
 void loop() {
 
 
@@ -127,7 +140,7 @@ void loop() {
 
   if (now - lastPublish >= publishInterval) {
     lastPublish = now;
-
+    timeClient.update();
     currentTemperature = waterTemperature.getWaterTemperature();
     env.setTemperature(tempHumiCo2.getTemperature());
     env.setHumidity(tempHumiCo2.getHumidity());
@@ -137,7 +150,8 @@ void loop() {
     env.setWaterTemperature(waterTemperature.getWaterTemperature());
     env.setCo2((float)tempHumiCo2.getCo2());
     env.setLux(lux.getLux());
-
+    // NTP를 사용하여 날짜 및 시간 데이터 설정
+    env.setDate(timeClient.getFormattedTime());
     // JSON 형식으로 변환 및 MQTT 발행
     StaticJsonDocument<256> doc;
     env.toJson(doc);
