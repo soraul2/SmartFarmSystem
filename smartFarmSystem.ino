@@ -90,12 +90,6 @@ void setup() {
   tempHumiCo2.begin();
   ph.begin();
   tempHumiCo2.readSensor();
-  ecSensor.begin();
-
-
-  // (선택 사항) 센서 교정
-  // 실제 교정 용액을 사용해 얻은 아날로그 값과 온도를 입력합니다.
-  // ecSensor.calibrate(1334.0, 25.0);
 
   Serial.println("--- Temp, Humi, Co2 Sensor begin() ---");
 
@@ -141,11 +135,16 @@ void loop() {
   if (now - lastPublish >= publishInterval) {
     lastPublish = now;
     timeClient.update();
+
     currentTemperature = waterTemperature.getWaterTemperature();
+    float ecValue = ecSensor.readEcValue(currentTemperature); 
+
     env.setTemperature(tempHumiCo2.getTemperature());
     env.setHumidity(tempHumiCo2.getHumidity());
     env.setPh(ph.getPh());
-    env.setEc(ecSensor.readEcValue(currentTemperature));
+
+    env.setEc(ecValue);
+
     env.setLux(lux.getLux());
     env.setWaterTemperature(waterTemperature.getWaterTemperature());
     env.setCo2((float)tempHumiCo2.getCo2());
