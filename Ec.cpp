@@ -22,5 +22,7 @@ float Ec::readEcValue(float temperature) {
   // 온도 보정
   ec = ec / (1.0 + 0.02 * (temperature - _fixedTemperature));
   
+  ec = ec / 1000.0;
+
   return ec;
 }

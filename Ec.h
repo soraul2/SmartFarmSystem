@@ -18,7 +18,7 @@ class Ec {
     int _ecPin; // EC 센서가 연결된 핀
     
     // 교정 값 설정
-    const float _calibrationAnalogValue = 670.0;
+    const float _calibrationAnalogValue = 350.0;
     const float _calibrationEcValue = 12880.0;
     const float _fixedTemperature = 25.0;
 };

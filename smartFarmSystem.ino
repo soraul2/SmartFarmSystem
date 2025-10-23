@@ -25,7 +25,7 @@ const char* ssid = "daesin_302";
 const char* password = "ds123456";
 const char* mqtt_server = "eafc441602df4e36aed5f15ad6df2e4c.s1.eu.hivemq.cloud";  // 예: "broker.hivemq.com"
 const char* mqtt_topic = "smartfarm/data";                                        // 데이터를 보낼 토픽
-const char* mqtt_client_id = "c9010a5344a54163aed93da0egfdgsbxcv";
+const char* mqtt_client_id = "c9010a5344a541d93da0egfdgsbxcv";
 const int mqtt_port = 8883;
 const char* mqtt_user = "daesin_302";
 const char* mqtt_password = "!Ds123456";
@@ -102,19 +102,19 @@ void setup() {
   // Enviroment 객체에 고정적인 값(시리얼 번호 등)을 한 번만 설정
   env.setNum(1);
   env.setSerial("GRW-001-A");
-  env.setMqttTopic("smartfarmsystem/enviroment");
+  env.setMqttTopic("smartfarmsystem/GRW-001-A/enviroment");
 }
 
 // 센서 데이터 발행 간격 설정 (1분20초)
-const long publishInterval = 62000;
+const long publishInterval = 8000;
 unsigned long lastPublish = 0;
 
 // 센서 데이터 읽는 시간 간격 설정 (1분)
-const long readInterval = 60000;
+const long readInterval = 10000;
 unsigned long lastRead = 0;
 
 // NTP 업데이트 시간 간격 설정 
-const long ntpUpdateInterval = 32000;
+const long ntpUpdateInterval = 9000;
 unsigned long lastNtpUpdate = 0;
 
 void loop() {
@@ -136,19 +136,23 @@ void loop() {
     lastPublish = now;
     timeClient.update();
 
-    currentTemperature = waterTemperature.getWaterTemperature();
-    float ecValue = ecSensor.readEcValue(currentTemperature); 
-
+    float waterTemp = waterTemperature.getWaterTemperature();
+    float ecValue = ecSensor.readEcValue(waterTemp); 
+    
     env.setTemperature(tempHumiCo2.getTemperature());
     env.setHumidity(tempHumiCo2.getHumidity());
     env.setPh(ph.getPh());
 
     env.setEc(ecValue);
-
     env.setLux(lux.getLux());
-    env.setWaterTemperature(waterTemperature.getWaterTemperature());
+    
+
+    env.setWaterTemperature(waterTemp);
     env.setCo2((float)tempHumiCo2.getCo2());
     env.setLux(lux.getLux());
+
+    
+    
     // NTP를 사용하여 날짜 및 시간 데이터 설정
     env.setDate(timeClient.getFormattedTime());
     // JSON 형식으로 변환 및 MQTT 발행
